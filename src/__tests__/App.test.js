@@ -1,14 +1,8 @@
 import React from "react";
 import "whatwg-fetch";
-import {
-  fireEvent,
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/extend-expect";
 import { server } from "../mocks/server";
-
 import App from "../components/App";
 
 beforeAll(() => server.listen());
@@ -18,77 +12,87 @@ afterAll(() => server.close());
 test("displays question prompts after fetching", async () => {
   render(<App />);
 
-  fireEvent.click(screen.queryByText(/View Questions/));
+  // Click the "View Questions" button
+  fireEvent.click(screen.getByText(/View Questions/));
 
-  expect(await screen.findByText(/lorem testum 1/g)).toBeInTheDocument();
-  expect(await screen.findByText(/lorem testum 2/g)).toBeInTheDocument();
+  // Wait for the questions to be displayed
+  expect(await screen.findByText(/lorem testum 1/)).toBeInTheDocument();
+  expect(await screen.findByText(/lorem testum 2/)).toBeInTheDocument();
 });
 
 test("creates a new question when the form is submitted", async () => {
   render(<App />);
 
-  // wait for first render of list (otherwise we get a React state warning)
-  await screen.findByText(/lorem testum 1/g);
+  // Wait for initial render
+  await screen.findByText(/lorem testum 1/);
 
-  // click form page
-  fireEvent.click(screen.queryByText("New Question"));
+  // Click the "New Question" button
+  fireEvent.click(screen.getByText("New Question"));
 
-  // fill out form
-  fireEvent.change(screen.queryByLabelText(/Prompt/), {
+  // Fill out the form
+  fireEvent.change(screen.getByLabelText(/Prompt/), {
     target: { value: "Test Prompt" },
   });
-  fireEvent.change(screen.queryByLabelText(/Answer 1/), {
+  fireEvent.change(screen.getByLabelText(/Answer 1/), {
     target: { value: "Test Answer 1" },
   });
-  fireEvent.change(screen.queryByLabelText(/Answer 2/), {
+  fireEvent.change(screen.getByLabelText(/Answer 2/), {
     target: { value: "Test Answer 2" },
   });
-  fireEvent.change(screen.queryByLabelText(/Correct Answer/), {
+  fireEvent.change(screen.getByLabelText(/Correct Answer/), {
     target: { value: "1" },
   });
 
-  // submit form
-  fireEvent.submit(screen.queryByText(/Add Question/));
+  // Submit the form
+  fireEvent.click(screen.getByText(/Add Question/));
 
-  // view questions
-  fireEvent.click(screen.queryByText(/View Questions/));
+  // Click the "View Questions" button
+  fireEvent.click(screen.getByText(/View Questions/));
 
-  expect(await screen.findByText(/Test Prompt/g)).toBeInTheDocument();
-  expect(await screen.findByText(/lorem testum 1/g)).toBeInTheDocument();
+  // Check if the new question is displayed
+  expect(await screen.findByText(/Test Prompt/)).toBeInTheDocument();
+  expect(await screen.findByText(/lorem testum 1/)).toBeInTheDocument();
 });
 
 test("deletes the question when the delete button is clicked", async () => {
-  const { rerender } = render(<App />);
+  render(<App />);
 
-  fireEvent.click(screen.queryByText(/View Questions/));
+  // Click the "View Questions" button
+  fireEvent.click(screen.getByText(/View Questions/));
 
-  await screen.findByText(/lorem testum 1/g);
+  // Wait for the questions to be displayed
+  await screen.findByText(/lorem testum 1/);
 
-  fireEvent.click(screen.queryAllByText("Delete Question")[0]);
+  // Click the delete button for the first question
+  fireEvent.click(screen.getAllByText("Delete Question")[0]);
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/lorem testum 1/g));
+  // Wait for the question to be removed
+  await waitFor(() => expect(screen.queryByText(/lorem testum 1/)).not.toBeInTheDocument());
 
-  rerender(<App />);
-
-  await screen.findByText(/lorem testum 2/g);
-
-  expect(screen.queryByText(/lorem testum 1/g)).not.toBeInTheDocument();
+  // Check that the remaining question is still displayed
+  expect(await screen.findByText(/lorem testum 2/)).toBeInTheDocument();
 });
 
 test("updates the answer when the dropdown is changed", async () => {
-  const { rerender } = render(<App />);
+  render(<App />);
 
-  fireEvent.click(screen.queryByText(/View Questions/));
+  // Click the "View Questions" button
+  fireEvent.click(screen.getByText(/View Questions/));
 
-  await screen.findByText(/lorem testum 2/g);
+  // Wait for the questions to be displayed
+  await screen.findByText(/lorem testum 2/);
 
-  fireEvent.change(screen.queryAllByLabelText(/Correct Answer/)[0], {
+  // Change the correct answer
+  fireEvent.change(screen.getAllByLabelText(/Correct Answer/)[0], {
     target: { value: "3" },
   });
 
-  expect(screen.queryAllByLabelText(/Correct Answer/)[0].value).toBe("3");
+  // Verify that the dropdown value has changed
+  expect(screen.getAllByLabelText(/Correct Answer/)[0].value).toBe("3");
 
-  rerender(<App />);
+  // Rerender the component to check persistence
+  render(<App />);
 
-  expect(screen.queryAllByLabelText(/Correct Answer/)[0].value).toBe("3");
+  // Verify that the dropdown value is still correct
+  expect(screen.getAllByLabelText(/Correct Answer/)[0].value).toBe("3");
 });
